@@ -32,7 +32,7 @@ async function generatePosters() {
             const albumData = await fetchAlbumData(albumName);
             if (albumData) {
                 const colours = await getDominantColours(albumData.images[0].url);
-                
+
                 // Create and name the iframe
                 const iframe = await createPosterIframe(albumData, colours);
                 if (iframe instanceof HTMLElement) {
@@ -57,6 +57,28 @@ async function generatePosters() {
             console.error(`Error fetching data for ${albumName}:`, error);
         }
     }
+
+    // Enable the "Download All Posters" button after posters are generated
+    const downloadAllButton = document.getElementById('download-all-button');
+    downloadAllButton.disabled = false;
+    downloadAllButton.onclick = downloadAllPosters;
+}
+
+async function downloadAllPosters() {
+    const iframes = document.querySelectorAll('.poster-wrapper iframe');
+    for (const iframe of iframes) {
+        const title = iframe.title.split('_Poster')[0].replace('_', '-'); // Extract and format title
+        await downloadPosterAsPng(iframe, title);
+    }
+}
+
+function downloadPosterAsPng(iframe, albumTitle) {
+    return html2canvas(iframe.contentWindow.document.body).then((canvas) => {
+        const link = document.createElement('a');
+        link.href = canvas.toDataURL('image/png');
+        link.download = `${albumTitle}_Poster.png`;
+        link.click();
+    });
 }
 
 async function fetchAlbumData(albumName) {
@@ -74,7 +96,6 @@ async function fetchAlbumData(albumName) {
     }
     return null;
 }
-
 async function createPosterIframe(album, colours) {
     const sortedColours = colours.sort((a, b) => getLuminance(a) - getLuminance(b));
     try {
@@ -98,6 +119,7 @@ async function createPosterIframe(album, colours) {
                         --subtitle-font-size: 14px;
                         --tracklist-font-size: 11px;
                     }
+
                     body {
                         font-family: Arial, sans-serif;
                         display: flex;
@@ -108,6 +130,7 @@ async function createPosterIframe(album, colours) {
                         background-color: var(--background-color);
                         color: var(--primary-text-color);
                     }
+
                     .container {
                         width: 4in;
                         height: 6in;
@@ -119,11 +142,13 @@ async function createPosterIframe(album, colours) {
                         padding: 15px;
                         box-sizing: border-box;
                     }
+
                     .album-art {
                         width: 100%;
                         border-radius: 5px;
                         margin-bottom: 8px;
                     }
+
                     .title {
                         display: flex;
                         justify-content: center;
@@ -135,33 +160,39 @@ async function createPosterIframe(album, colours) {
                         margin-bottom: 8px;
                         color: var(--primary-text-color);
                     }
+
                     .sub {
                         font-weight: normal;
                         font-size: var(--subtitle-font-size);
                     }
+
                     hr {
                         border: 0;
                         border-top: 1px solid var(--linework-color);
                         margin: 3px 0 8px;
                     }
+
                     .palette {
                         display: flex;
                         gap: 4px;
                         margin-bottom: 8px;
                         justify-content: center;
                     }
+
                     .swatch {
                         width: 20px;
                         height: 20px;
                         border-radius: 4px;
                         border: 1px solid var(--swatch-outline-color);
                     }
+
                     .tracklist-container {
                         display: grid;
                         grid-template-columns: auto 1fr auto 1fr;
                         gap: 5px 10px;
                         justify-content: center;
                     }
+
                     .tracklist-number {
                         font-size: var(--tracklist-font-size);
                         font-weight: normal;
@@ -169,12 +200,14 @@ async function createPosterIframe(album, colours) {
                         text-align: right;
                         padding-right: 5px;
                     }
+
                     .tracklist-title {
                         font-size: var(--tracklist-font-size);
                         font-weight: bold;
                         color: var(--primary-text-color);
                         text-align: left;
                     }
+
                 </style>
             </head>
             <body>
@@ -202,7 +235,7 @@ async function createPosterIframe(album, colours) {
         const iframe = document.createElement('iframe');
         const formattedAlbum = album.name.replace(/[^a-zA-Z0-9]/g, '_');
         const formattedArtist = album.artists[0].name.replace(/[^a-zA-Z0-9]/g, '_');
-        
+
         // Set title or id attribute for naming
         iframe.title = `${formattedAlbum}-${formattedArtist}_Poster`;
         iframe.src = url;
@@ -216,19 +249,6 @@ async function createPosterIframe(album, colours) {
     }
 }
 
-function downloadPosterAsPng(iframe, albumName, artistName) {
-    html2canvas(iframe.contentWindow.document.body).then((canvas) => {
-        const link = document.createElement('a');
-        
-        // Format the filename as `{Album}-{Artist}_Poster.png`
-        const formattedAlbum = albumName.replace(/[^a-zA-Z0-9]/g, '_');
-        const formattedArtist = artistName.replace(/[^a-zA-Z0-9]/g, '_');
-        link.href = canvas.toDataURL('image/png');
-        link.download = `${formattedAlbum}-${formattedArtist}_Poster.png`;
-        
-        link.click();
-    });
-}
 
 function getLuminance(rgb) {
     const rgbArray = rgb.match(/\d+/g).map(Number);
