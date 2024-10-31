@@ -1,10 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Spotify Album Poster Generator</title>
-    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;700&display=swap" rel="stylesheet"> <!-- Import Oswald font -->
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Import Oswald font -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- Include html2canvas library -->
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -12,8 +16,10 @@
             flex-direction: column;
             align-items: center;
             margin-top: 20px;
-            background-color: #f5f5dc; /* Light cream background */
+            background-color: #f5f5dc;
+            /* Light cream background */
         }
+
         #poster-container {
             display: flex;
             flex-wrap: wrap;
@@ -21,22 +27,38 @@
             margin-top: 20px;
             justify-content: center;
         }
+
         #album-input {
             width: 300px;
             padding: 10px;
             margin: 10px 0;
             height: 100px;
         }
+
         button {
             padding: 10px 20px;
         }
+
         iframe {
-            width: 600px;
-            height: 400px;
+            width: 400px;
+            height: 600px;
             border: 1px solid #ddd;
+        }
+
+        .poster-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .download-button {
+            margin-top: 10px;
+            padding: 5px 10px;
+            cursor: pointer;
         }
     </style>
 </head>
+
 <body>
     <h1>Spotify Album Poster Generator</h1>
     <button id="login-button">Log in to Spotify</button>
@@ -90,7 +112,20 @@
                     if (albumData) {
                         const colours = await getDominantColours(albumData.images[0].url);
                         const iframe = createPosterIframe(albumData, colours);
-                        posterContainer.appendChild(iframe);
+
+                        // Wrap the iframe with a div and add a download button
+                        const wrapper = document.createElement('div');
+                        wrapper.classList.add('poster-wrapper');
+                        wrapper.appendChild(iframe);
+
+                        // Create a download button
+                        const downloadButton = document.createElement('button');
+                        downloadButton.classList.add('download-button');
+                        downloadButton.innerText = 'Download as PNG';
+                        downloadButton.onclick = () => downloadPosterAsPng(iframe);
+
+                        wrapper.appendChild(downloadButton);
+                        posterContainer.appendChild(wrapper);
                     } else {
                         console.error(`Album ${albumName} not found.`);
                     }
@@ -143,7 +178,7 @@
         function extractColours(data) {
             const colours = [];
             const tolerance = 30;
-            
+
             function isUniqueColour(r, g, b) {
                 return colours.every(([cr, cg, cb]) => Math.abs(cr - r) > tolerance || Math.abs(cg - g) > tolerance || Math.abs(cb - b) > tolerance);
             }
@@ -162,150 +197,195 @@
             return 0.299 * rgbArray[0] + 0.587 * rgbArray[1] + 0.114 * rgbArray[2];
         }
 
+        // Modified generatePosters function with error handling
+        async function generatePosters() {
+            const albumInput = document.getElementById('album-input').value;
+            const albums = albumInput.split('\n').map(album => album.trim()).filter(Boolean);
+            const posterContainer = document.getElementById('poster-container');
+            posterContainer.innerHTML = ''; // Clear previous posters
+
+            for (const albumName of albums) {
+                try {
+                    const albumData = await fetchAlbumData(albumName);
+                    if (albumData) {
+                        const colours = await getDominantColours(albumData.images[0].url);
+
+                        // Ensure createPosterIframe returns a valid node
+                        const iframe = await createPosterIframe(albumData, colours);
+                        if (iframe instanceof HTMLElement) {  // Check if the result is a valid DOM Node
+                            const wrapper = document.createElement('div');
+                            wrapper.classList.add('poster-wrapper');
+                            wrapper.appendChild(iframe);
+
+                            // Create a download button
+                            const downloadButton = document.createElement('button');
+                            downloadButton.classList.add('download-button');
+                            downloadButton.innerText = 'Download as PNG';
+                            downloadButton.onclick = () => downloadPosterAsPng(iframe);
+
+                            wrapper.appendChild(downloadButton);
+                            posterContainer.appendChild(wrapper);
+                        } else {
+                            console.error(`Failed to create an iframe for album: ${albumName}`);
+                        }
+                    } else {
+                        console.error(`Album ${albumName} not found.`);
+                    }
+                } catch (error) {
+                    console.error(`Error fetching data for ${albumName}:`, error);
+                }
+            }
+        }
+
         // Generate HTML content for each album poster and return as an iframe
-        // Generate HTML content for each album poster and return as an iframe
-function createPosterIframe(album, colours) {
-    const sortedColours = colours.sort((a, b) => getLuminance(a) - getLuminance(b)); // Sort colours from darkest to lightest
-    const htmlContent = `
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;700&display=swap" rel="stylesheet">
-            <style>
-                :root {
-                    /* Colour Variables */
-                    --primary-text-color: #333333;
-                    --linework-color: #ddd;
-                    --background-color: #f5f5dc;
-                    --container-background-color: #ffffff;
-                    --swatch-outline-color: #ddd;
+        async function createPosterIframe(album, colours) {
+            const sortedColours = colours.sort((a, b) => getLuminance(a) - getLuminance(b)); // Sort colours from darkest to lightest
 
-                    /* Font Size Variables */
-                    --title-font-size: 14px;
-                    --subtitle-font-size: 14px;
-                    --tracklist-font-size: 11px;
-                }
+            try {
+                // Fetch the album image as a blob and convert to a data URL
+                const albumImageBlob = await fetch(album.images[0].url).then(response => response.blob());
+                const albumImageUrl = URL.createObjectURL(albumImageBlob);
 
-                body { 
-                    font-family: Arial, sans-serif; 
-                    display: flex; 
-                    justify-content: center; 
-                    align-items: center; 
-                    height: 100vh; 
-                    margin: 0; 
-                    background-color: var(--background-color); 
-                    color: var(--primary-text-color); 
-                }
-                
-                .container {
-                    width: 4in;  
-                    height: 6in; 
-                    background-color: var(--container-background-color);
-                    border-radius: 8px;
-                    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-                    overflow: hidden;
-                    text-align: left;
-                    padding: 15px; 
-                    box-sizing: border-box;
-                }
-
-                .album-art {
-                    width: 100%; 
-                    border-radius: 5px;
-                    margin-bottom: 8px;
-                }
-
-                .title {
-                    display: flex;
-                    justify-content: center;
-                    align-items: baseline;
-                    font-family: 'Oswald', sans-serif;
-                    font-size: var(--title-font-size);
-                    font-weight: bold;
-                    gap: 5px;
-                    margin-bottom: 8px;
-                    color: var(--primary-text-color);
-                }
-
-                .sub {
-                    font-weight: normal;
-                    font-size: var(--subtitle-font-size);
-                }
-
-                hr {
-                    border: 0;
-                    border-top: 1px solid var(--linework-color);
-                    margin: 3px 0 8px;
-                }
-
-                .palette { 
-                    display: flex; 
-                    gap: 4px;
-                    margin-bottom: 8px;
-                    justify-content: center;
-                }
-                
-                .swatch { 
-                    width: 20px; 
-                    height: 20px; 
-                    border-radius: 4px;
-                    border: 1px solid var(--swatch-outline-color);
-                }
-
-                .tracklist-container {
-                    display: grid;
-                    grid-template-columns: auto 1fr auto 1fr;
-                    gap: 5px 10px;
-                    justify-content: center;
-                }
-
-                .tracklist-number {
-                    font-size: var(--tracklist-font-size);
-                    font-weight: normal;
-                    color: var(--primary-text-color);
-                    text-align: right;
-                    padding-right: 5px;
-                }
-
-                .tracklist-title {
-                    font-size: var(--tracklist-font-size);
-                    font-weight: bold;
-                    color: var(--primary-text-color);
-                    text-align: left;
-                }
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <img src="${album.images[0].url}" class="album-art" alt="${album.name} album cover">
-                <div class="title">${album.name}&nbsp;<div class="sub">${album.artists[0].name}</div></div>
-                <hr/>
-                <div class="palette">
-                    ${sortedColours.map(colour => `<div class="swatch" style="background-color: ${colour};"></div>`).join('')}
+                const htmlContent = `
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;700&display=swap" rel="stylesheet">
+                <style>
+                    :root {
+                        --primary-text-color: #333333;
+                        --linework-color: #ddd;
+                        --background-color: #f5f5dc;
+                        --container-background-color: #ffffff;
+                        --swatch-outline-color: #ddd;
+                        --title-font-size: 14px;
+                        --subtitle-font-size: 14px;
+                        --tracklist-font-size: 11px;
+                    }
+                    body {
+                        font-family: Arial, sans-serif;
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        height: 100vh;
+                        margin: 0;
+                        background-color: var(--background-color);
+                        color: var(--primary-text-color);
+                    }
+                    .container {
+                        width: 4in;
+                        height: 6in;
+                        background-color: var(--container-background-color);
+                        border-radius: 8px;
+                        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+                        overflow: hidden;
+                        text-align: left;
+                        padding: 15px;
+                        box-sizing: border-box;
+                    }
+                    .album-art {
+                        width: 100%;
+                        border-radius: 5px;
+                        margin-bottom: 8px;
+                    }
+                    .title {
+                        display: flex;
+                        justify-content: center;
+                        align-items: baseline;
+                        font-family: 'Oswald', sans-serif;
+                        font-size: var(--title-font-size);
+                        font-weight: bold;
+                        gap: 5px;
+                        margin-bottom: 8px;
+                        color: var(--primary-text-color);
+                    }
+                    .sub {
+                        font-weight: normal;
+                        font-size: var(--subtitle-font-size);
+                    }
+                    hr {
+                        border: 0;
+                        border-top: 1px solid var(--linework-color);
+                        margin: 3px 0 8px;
+                    }
+                    .palette {
+                        display: flex;
+                        gap: 4px;
+                        margin-bottom: 8px;
+                        justify-content: center;
+                    }
+                    .swatch {
+                        width: 20px;
+                        height: 20px;
+                        border-radius: 4px;
+                        border: 1px solid var(--swatch-outline-color);
+                    }
+                    .tracklist-container {
+                        display: grid;
+                        grid-template-columns: auto 1fr auto 1fr;
+                        gap: 5px 10px;
+                        justify-content: center;
+                    }
+                    .tracklist-number {
+                        font-size: var(--tracklist-font-size);
+                        font-weight: normal;
+                        color: var(--primary-text-color);
+                        text-align: right;
+                        padding-right: 5px;
+                    }
+                    .tracklist-title {
+                        font-size: var(--tracklist-font-size);
+                        font-weight: bold;
+                        color: var(--primary-text-color);
+                        text-align: left;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <img src="${albumImageUrl}" class="album-art" alt="${album.name} album cover">
+                    <div class="title">${album.name}&nbsp;<div class="sub">${album.artists[0].name}</div></div>
+                    <hr/>
+                    <div class="palette">
+                        ${sortedColours.map(colour => `<div class="swatch" style="background-color: ${colour};"></div>`).join('')}
+                    </div>
+                    <div class="tracklist-container">
+                        ${album.tracks.map((track, index) => `
+                            <div class="tracklist-number">${index + 1}.</div>
+                            <div class="tracklist-title">${track.name}</div>
+                        `).join('')}
+                    </div>
                 </div>
-                <div class="tracklist-container">
-                    ${album.tracks.map((track, index) => `
-                        <div class="tracklist-number">${index + 1}.</div>
-                        <div class="tracklist-title">${track.name}</div>
-                    `).join('')}
-                </div>
-            </div>
-        </body>
-        </html>
-    `;
+            </body>
+            </html>
+        `;
 
-    const blob = new Blob([htmlContent], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
+                const blob = new Blob([htmlContent], { type: 'text/html' });
+                const url = URL.createObjectURL(blob);
 
-    const iframe = document.createElement('iframe');
-    iframe.src = url;
-    iframe.width = '600';
-    iframe.height = '400';
+                const iframe = document.createElement('iframe');
+                iframe.src = url;
+                iframe.width = '400';
+                iframe.height = '600';
 
-    return iframe;
-}
+                return iframe;
+            } catch (error) {
+                console.error("Error creating iframe:", error);
+                return null;  // Return null if there's an error creating the iframe
+            }
+        }
 
+        // Download the poster as PNG using html2canvas
+        function downloadPosterAsPng(iframe) {
+            html2canvas(iframe.contentWindow.document.body).then((canvas) => {
+                const link = document.createElement('a');
+                link.href = canvas.toDataURL('image/png');
+                link.download = 'album-poster.png';
+                link.click();
+            });
+        }
     </script>
 </body>
+
 </html>
