@@ -1,4 +1,4 @@
-/* General Styling */
+/* Outer page styling */
 body {
     font-family: Arial, sans-serif;
     display: flex;
@@ -98,7 +98,7 @@ footer {
     margin-top: 30px;
 }
 
-/* Mobile view adjustments */
+/* Mobile responsive styles */
 @media (max-width: 600px) {
     body {
         padding: 10px;
@@ -106,41 +106,35 @@ footer {
 
     h1 {
         font-size: 20px;
+        margin-bottom: 15px;
     }
 
     #album-input {
         width: 100%;
-        height: 80px;
-        font-size: 12px;
+        max-width: none;
+        padding: 8px;
+        font-size: 13px;
     }
 
     button, .download-button {
+        font-size: 13px;
+        padding: 8px 15px;
         width: 100%;
-        font-size: 14px;
-        padding: 10px;
-        margin: 5px 0;
-    }
-
-    #generate-posters-button,
-    #download-all-button {
-        width: 100%;
-        font-size: 14px;
-        padding: 10px;
-        margin: 10px 0;
-    }
-
-    #poster-container {
-        flex-direction: column;
-        gap: 10px;
+        max-width: 300px;
     }
 
     .poster-wrapper {
         max-width: 100%;
+        padding: 10px;
+    }
+
+    iframe {
         width: 100%;
+        max-width: 350px;
+        height: auto;
     }
 
     footer {
-        max-width: 100%;
-        font-size: 10px;
+        font-size: 11px;
     }
 }
