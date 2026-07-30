@@ -1,6 +1,7 @@
 const clientId = '9366e6cc6fdf45c191fbf05fb374e297';
 const redirectUri = window.location.origin;
 const scopes = 'user-library-read playlist-read-private';
+const lastFmApiKey = 'YOUR_LASTFM_API_KEY'; // Add your Last.fm API key here
 
 document.getElementById('login-button').onclick = () => {
     const authUrl = `https://accounts.spotify.com/authorize?client_id=${clientId}&response_type=token&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scopes)}`;
@@ -15,11 +16,10 @@ if (hash) {
     window.history.replaceState({}, document.title, window.location.pathname);
 }
 
-if (accessToken) {
-    document.getElementById('album-input').disabled = false;
-    document.getElementById('generate-posters-button').disabled = false;
-    document.getElementById('generate-posters-button').addEventListener('click', generatePosters);
-}
+// Enable buttons regardless of Spotify auth so Last.fm can be used as a standalone fallback
+document.getElementById('album-input').disabled = false;
+document.getElementById('generate-posters-button').disabled = false;
+document.getElementById('generate-posters-button').addEventListener('click', generatePosters);
 
 async function generatePosters() {
     const albumInput = document.getElementById('album-input').value;
@@ -29,7 +29,19 @@ async function generatePosters() {
 
     for (const albumName of albums) {
         try {
-            const albumData = await fetchAlbumData(albumName);
+            let albumData = null;
+
+            // Try Spotify first if authenticated
+            if (accessToken) {
+                albumData = await fetchAlbumData(albumName);
+            }
+
+            // Fallback to Last.fm if Spotify fails or isn't authenticated
+            if (!albumData && lastFmApiKey !== 'YOUR_LASTFM_API_KEY') {
+                console.log(`Trying Last.fm for: ${albumName}`);
+                albumData = await fetchAlbumDataLastFm(albumName);
+            }
+
             if (albumData) {
                 const colours = await getDominantColours(albumData.images[0].url);
 
@@ -51,7 +63,7 @@ async function generatePosters() {
                     console.error(`Failed to create an iframe for album: ${albumName}`);
                 }
             } else {
-                console.error(`Album ${albumName} not found.`);
+                console.error(`Album ${albumName} not found on Spotify or Last.fm.`);
             }
         } catch (error) {
             console.error(`Error fetching data for ${albumName}:`, error);
@@ -60,8 +72,10 @@ async function generatePosters() {
 
     // Enable the "Download All Posters" button after posters are generated
     const downloadAllButton = document.getElementById('download-all-button');
-    downloadAllButton.disabled = false;
-    downloadAllButton.onclick = downloadAllPosters;
+    if(downloadAllButton) {
+        downloadAllButton.disabled = false;
+        downloadAllButton.onclick = downloadAllPosters;
+    }
 }
 
 async function downloadAllPosters() {
@@ -81,21 +95,68 @@ function downloadPosterAsPng(iframe, albumTitle) {
     });
 }
 
+// SPOTIFY FETCH
 async function fetchAlbumData(albumName) {
-    const res = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(albumName)}&type=album`, {
-        headers: { 'Authorization': `Bearer ${accessToken}` }
-    });
-    const data = await res.json();
-    if (data.albums.items.length > 0) {
-        const album = data.albums.items[0];
-        const tracksRes = await fetch(`https://api.spotify.com/v1/albums/${album.id}/tracks`, {
+    try {
+        const res = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(albumName)}&type=album`, {
             headers: { 'Authorization': `Bearer ${accessToken}` }
         });
-        const tracksData = await tracksRes.json();
-        return { ...album, tracks: tracksData.items };
+        const data = await res.json();
+        if (data.albums && data.albums.items.length > 0) {
+            const album = data.albums.items[0];
+            const tracksRes = await fetch(`https://api.spotify.com/v1/albums/${album.id}/tracks`, {
+                headers: { 'Authorization': `Bearer ${accessToken}` }
+            });
+            const tracksData = await tracksRes.json();
+            return { ...album, tracks: tracksData.items };
+        }
+    } catch (e) {
+        console.error("Spotify API error:", e);
     }
     return null;
 }
+
+// LAST.FM FETCH
+async function fetchAlbumDataLastFm(albumName) {
+    try {
+        // Step 1: Search for the album to get the correct artist and title
+        const searchRes = await fetch(`https://ws.audioscrobbler.com/2.0/?method=album.search&album=${encodeURIComponent(albumName)}&api_key=${lastFmApiKey}&format=json`);
+        const searchData = await searchRes.json();
+        const albumMatches = searchData.results?.albummatches?.album;
+
+        if (albumMatches && albumMatches.length > 0) {
+            const bestMatch = albumMatches[0];
+
+            // Step 2: Get full album info (tracklist and hi-res image)
+            const infoRes = await fetch(`https://ws.audioscrobbler.com/2.0/?method=album.getinfo&api_key=${lastFmApiKey}&artist=${encodeURIComponent(bestMatch.artist)}&album=${encodeURIComponent(bestMatch.name)}&format=json`);
+            const infoData = await infoRes.json();
+            const albumInfo = infoData.album;
+
+            if (albumInfo) {
+                // Find the largest available image from Last.fm
+                const images = albumInfo.image || [];
+                const bestImage = images.reverse().find(img => img['#text']) || { '#text': 'https://via.placeholder.com/400' };
+                
+                // Normalise tracks (Last.fm returns a single object if there is only 1 track, instead of an array)
+                let rawTracks = albumInfo.tracks?.track || [];
+                if (!Array.isArray(rawTracks)) rawTracks = [rawTracks];
+                const mappedTracks = rawTracks.map(t => ({ name: t.name }));
+
+                // Return in the exact same format Spotify uses so the rendering code doesn't break
+                return {
+                    name: albumInfo.name,
+                    artists: [{ name: albumInfo.artist }],
+                    images: [{ url: bestImage['#text'] }],
+                    tracks: mappedTracks
+                };
+            }
+        }
+    } catch (e) {
+        console.error("Last.fm API error:", e);
+    }
+    return null;
+}
+
 async function createPosterIframe(album, colours) {
     const sortedColours = colours.sort((a, b) => getLuminance(a) - getLuminance(b));
     try {
@@ -206,6 +267,9 @@ async function createPosterIframe(album, colours) {
                         font-weight: bold;
                         color: var(--primary-text-color);
                         text-align: left;
+                        white-space: nowrap;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
                     }
 
                 </style>

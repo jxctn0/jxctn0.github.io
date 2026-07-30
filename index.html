@@ -2,25 +2,29 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Spotify Album Poster Generator</title>
+    <title>Album Poster Generator</title>
     <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
-    <h1>Spotify Album Poster Generator</h1>
-    <button id="login-button">Log in to Spotify</button>
-    <textarea id="album-input" placeholder="Enter album names, one per line" disabled></textarea>
-    <button id="generate-posters-button" disabled>Generate Posters</button>
+    <h1>Album Poster Generator</h1>
+    <p>Search using Spotify, with automatic fallback to Last.fm if you aren't logged in.</p>
+    
+    <button id="login-button">Log in to Spotify (Optional)</button>
+    <textarea id="album-input" placeholder="Enter album names, one per line"></textarea>
+    <button id="generate-posters-button">Generate Posters</button>
+    
     <div id="poster-container"></div>
     
-    <!-- New Download All Posters button -->
+    <!-- Download All Posters button -->
     <button id="download-all-button" disabled>Download All Posters</button>
 
     <footer>
-        &copy; Joshua Cotugno 2024 - Version beta.0052
+        &copy; Joshua Cotugno 2024 - Version beta.0053
     </footer>
 
     <script src="script.js"></script>
 </body>
 </html>
+
