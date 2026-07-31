@@ -1,68 +1,52 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
-        <title>Base64 Page Rewriter</title>
-            <style>
-                    body {
-                                font-family: sans-serif;
-                                            max-width: 600px;
-                                                        margin: 2rem auto;
-                                                                    padding: 1rem;
-                                                                                background: #f4f4f4;
-                                                                                        }
-                                                                                                textarea {
-                                                                                                            width: 100%;
-                                                                                                                        height: 150px;
-                                                                                                                                    margin-bottom: 1rem;
-                                                                                                                                                font-family: monospace;
-                                                                                                                                                            padding: 0.5rem;
-                                                                                                                                                                        box-sizing: border-box;
-                                                                                                                                                                                }
-                                                                                                                                                                                        button {
-                                                                                                                                                                                                    padding: 0.5rem 1rem;
-                                                                                                                                                                                                                cursor: pointer;
-                                                                                                                                                                                                                            background: #007bff;
-                                                                                                                                                                                                                                        color: white;
-                                                                                                                                                                                                                                                    border: none;
-                                                                                                                                                                                                                                                                border-radius: 3px;
-                                                                                                                                                                                                                                                                        }
-                                                                                                                                                                                                                                                                                button:hover {
-                                                                                                                                                                                                                                                                                            background: #0056b3;
-                                                                                                                                                                                                                                                                                                    }
-                                                                                                                                                                                                                                                                                                        </style>
-                                                                                                                                                                                                                                                                                                        </head>
-                                                                                                                                                                                                                                                                                                        <body>
-                                                                                                                                                                                                                                                                                                            <h2>Base64 to HTML Decoder</h2>
-                                                                                                                                                                                                                                                                                                                <p>Paste your Base64 encoded code below. Clicking the button will completely overwrite this page with the decoded content.</p>
-                                                                                                                                                                                                                                                                                                                    
-                                                                                                                                                                                                                                                                                                                        <textarea id="base64Input" placeholder="e.g., PGgxPkhlbGxvIFdvcmxkPC9oMT4="></textarea>
-                                                                                                                                                                                                                                                                                                                            <br>
-                                                                                                                                                                                                                                                                                                                                <button onclick="rewritePage()">Decode and Rewrite</button>
+    <title>Processing Payload...</title>
+</head>
 
-                                                                                                                                                                                                                                                                                                                                    <script>
-                                                                                                                                                                                                                                                                                                                                            function rewritePage() {
-                                                                                                                                                                                                                                                                                                                                                        const input = document.getElementById('base64Input').value.trim();
-                                                                                                                                                                                                                                                                                                                                                                    if (!input) {
-                                                                                                                                                                                                                                                                                                                                                                                    alert("Please enter some Base64 code first.");
-                                                                                                                                                                                                                                                                                                                                                                                                    return;
-                                                                                                                                                                                                                                                                                                                                                                                                                }
+<body>
+    <p>Loading payload...</p>
 
-                                                                                                                                                                                                                                                                                                                                                                                                                            try {
-                                                                                                                                                                                                                                                                                                                                                                                                                                            // Decode the Base64 string into standard text
-                                                                                                                                                                                                                                                                                                                                                                                                                                                            const decodedHTML = atob(input);
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                            
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            // document.open() clears the current DOM
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            document.open();
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            // document.write() injects the new HTML
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            document.write(decodedHTML);
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            // document.close() tells the browser we have finished writing
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            document.close();
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        } catch (error) {
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        alert("Failed to decode. Please ensure the string is valid Base64.");
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    }
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            }
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                </script>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                </body>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                </html>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                
+    <script>
+        // Run immediately as the script is parsed
+        (function () {
+            // Grab the query string from the URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const b64Param = urlParams.get('b64');
+
+            if (b64Param) {
+                // Define the expected prefix from your QR code link
+                const prefix = 'data/text,format=base64,';
+                let b64String = '';
+
+                // Extract the actual Base64 code
+                if (b64Param.startsWith(prefix)) {
+                    b64String = b64Param.substring(prefix.length);
+                } else {
+                    // Fallback: if the prefix is slightly different, grab everything after the last comma
+                    const parts = b64Param.split(',');
+                    b64String = parts[parts.length - 1];
+                }
+
+                try {
+                    // Decode the Base64 string
+                    const decodedHTML = atob(b64String);
+
+                    // Overwrite the current document
+                    document.open();
+                    document.write(decodedHTML);
+                    document.close();
+                } catch (error) {
+                    document.body.innerHTML = '<p style="color: red;">Error: Failed to decode the payload. Ensure the QR code contains valid Base64.</p>';
+                    console.error("Decoding error:", error);
+                }
+            } else {
+                document.body.innerHTML = '<p>No payload detected in the URL parameters.</p>';
+            }
+        })();
+    </script>
+</body>
+
+</html>
